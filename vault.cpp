@@ -4,15 +4,16 @@
 #include <vector>
 #include <sstream>
 #include <unordered_map>
+#include <openssl/sha.h> // SHA-1 hashing
 
 namespace fs = std::filesystem;
 
 // Node structure for the linked list representing commit history
 struct CommitNode {
-    std::string commitHash; // Hash of the commit
-    std::string message;    // Commit message
-    std::string parentHash; // Hash of the parent commit
-    std::unordered_map<std::string, std::string> files; // Map of file paths to their hashes
+    std::string commitHash;
+    std::string message;
+    std::string parentHash;
+    std::unordered_map<std::string, std::string> files;
 
     CommitNode* next; // Pointer to the next commit in the list
 
@@ -22,14 +23,14 @@ struct CommitNode {
 
 class Vault {
 private:
-    std::string repoPath;       // Path to the .vault repository
-    std::string objectsPath;    // Path to the objects directory
-    std::string headPath;       // Path to the HEAD file
-    std::string indexPath;      // Path to the index file
-    CommitNode* headCommit;     // Pointer to the latest commit in the linked list
+    std::string repoPath;
+    std::string objectsPath;
+    std::string headPath;
+    std::string indexPath;
+    CommitNode* headCommit;
 
 public:
-    // Constructor: Initializes the repository paths and checks if the repository exists
+
     Vault(const std::string& repoPath = ".") {
         this->repoPath = repoPath + "/.vault";
         this->objectsPath = this->repoPath + "/objects";
@@ -57,9 +58,9 @@ public:
     void init() {
         if (!fs::exists(this->repoPath)) {
             try {
-                fs::create_directories(objectsPath); // Create the objects directory
-                std::ofstream headFile(headPath, std::ios::trunc); // Create the HEAD file
-                std::ofstream indexFile(indexPath, std::ios::trunc); // Create the index file
+                fs::create_directories(objectsPath);
+                std::ofstream headFile(headPath, std::ios::trunc);
+                std::ofstream indexFile(indexPath, std::ios::trunc);
                 std::cout << "Initialized .vault repository" << std::endl;
             } catch (const std::exception& e) {
                 std::cerr << "Error initializing repository: " << e.what() << std::endl;
@@ -69,10 +70,17 @@ public:
         }
     }
 
-    // Generate a simple hash for file content
-    std::string simpleHash(const std::string& content) {
-        std::hash<std::string> hasher;
-        return std::to_string(hasher(content));
+    // Generate a SHA-1 hash for file content
+    std::string sha1Hash(const std::string& content) {
+        unsigned char hash[SHA_DIGEST_LENGTH];
+        SHA1(reinterpret_cast<const unsigned char*>(content.c_str()), content.size(), hash);
+
+        std::stringstream ss;
+        for (int i = 0; i < SHA_DIGEST_LENGTH; i++) {
+            ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
+        }
+
+        return ss.str();
     }
 
     // Add a file to the staging area (index)
@@ -82,21 +90,20 @@ public:
             std::cerr << "Error: Could not open file " << filePath << std::endl;
             return;
         }
-        // buffer to read the content and load it into memory.
+        
+        // Buffers used to read the file content and write to memory and store it in another content file
         std::stringstream buffer;
         buffer << file.rdbuf();
         std::string content = buffer.str();
-        std::string fileHash = simpleHash(content);
+        std::string fileHash = sha1Hash(content);
 
-        // Convert to relative path before storing. Relative path generation is necessary to store it in index(staging area)
+        // Convert to relative path before storing to store the relative path to index(Staging Area)
         std::string relativePath = fs::relative(filePath, fs::current_path()).string();
 
-        // Save file contents in objects directory. Currently no implementation of blobs, trees.
         std::ofstream objectFile(objectsPath + "/" + fileHash);
         objectFile << content;
         objectFile.close();
 
-        // Append to index using relative paths
         std::ofstream indexFile(indexPath, std::ios::app);
         indexFile << relativePath << " " << fileHash << "\n";
         indexFile.close();
@@ -131,7 +138,7 @@ public:
             return;
         }
 
-        std::string commitHash = simpleHash(indexContent + message);
+        std::string commitHash = sha1Hash(indexContent + message);
 
         // Create a new commit node
         std::string parentHash = (headCommit != nullptr) ? headCommit->commitHash : "";
