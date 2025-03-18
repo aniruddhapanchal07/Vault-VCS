@@ -16,13 +16,11 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # List all source files
 set(SOURCES
-    src/Vault.cpp
+    src/vault.cpp
     src/init.cpp
     src/add.cpp
     src/commit.cpp
-    src/checkout.cpp
     src/log.cpp
-    src/status.cpp
     src/CommitNode.cpp
     src/main.cpp
 )

@@ -1,4 +1,4 @@
-#include "Vault.h"
+#include "vault.h"
 #include "../deps/include/openssl/sha.h"
 #include <iostream>
 #include <fstream>
