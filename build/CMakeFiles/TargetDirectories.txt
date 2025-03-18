@@ -1,0 +1,3 @@
+D:/JUET/VERSION/build/CMakeFiles/vault.dir
+D:/JUET/VERSION/build/CMakeFiles/edit_cache.dir
+D:/JUET/VERSION/build/CMakeFiles/rebuild_cache.dir
