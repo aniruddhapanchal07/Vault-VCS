@@ -1,3 +1,0 @@
-/home/silva/projects/Vault-VCS/build/CMakeFiles/vault-vcs.dir
-/home/silva/projects/Vault-VCS/build/CMakeFiles/edit_cache.dir
-/home/silva/projects/Vault-VCS/build/CMakeFiles/rebuild_cache.dir
