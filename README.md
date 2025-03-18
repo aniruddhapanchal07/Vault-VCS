@@ -39,7 +39,7 @@ project/
 │   ├── main.cpp
 │   ├── Tree.h
 │   ├── vault.cpp
-│   ├── Vault.h
+│   ├── vault.h
 ├── CMakeLists.txt
 ├── README.md
 ```
