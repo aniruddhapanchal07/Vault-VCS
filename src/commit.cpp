@@ -42,6 +42,20 @@ void Vault::commit(const std::string& message) {
     std::string commitFilePath = this->commitsPath + "/" + commitHash;
     if (fs::exists(commitFilePath)) {
         std::cout << "Commit already exists: " << commitHash << "\n";
+        
+        std::ofstream clearIndexFile(this->indexPath, std::ios::trunc);
+        if (!clearIndexFile) {
+            std::cerr << "Error: Unable to clear index file.\n";
+            return;
+        }
+        clearIndexFile.close();
+
+        std::ofstream clearStagedTreeFile(this->stagedTreePath, std::ios::trunc);
+        if (!clearStagedTreeFile) {
+            std::cerr << "Error: Unable to clear staged tree file.\n";
+            return;
+        }
+        
         return;
     }
 

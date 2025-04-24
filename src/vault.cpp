@@ -1,10 +1,10 @@
 #include "vault.h"
-#include "../deps/include/openssl/sha.h"
 #include <iostream>
 #include <fstream>
 #include <filesystem>
 #include <sstream>
 #include <iomanip>
+#include <openssl/sha.h>
 #include <vector>
 #include <numeric>
 

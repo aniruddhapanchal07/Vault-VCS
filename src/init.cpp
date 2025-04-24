@@ -6,7 +6,6 @@
 namespace fs = std::filesystem;
 
 void Vault::init() {
-    // Create the repository structure
     if (!fs::exists(this->repoPath)) {
         fs::create_directories(this->repoPath);
         fs::create_directories(this->objectsPath);
@@ -34,8 +33,8 @@ void Vault::init() {
         }
         stagedTreeFile.close();
         
-        std::cout << "Initialized empty Vault repository in " << this->repoPath << "\n";
+        std::cout << "Initialized empty Vault repository" << "\n";
     } else {
-        std::cout << "Vault repository already exists in " << this->repoPath << "\n";
+        std::cout << "Vault repository already exists" << "\n";
     }
 }

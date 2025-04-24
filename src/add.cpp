@@ -15,6 +15,11 @@ void addToTree(Tree& tree, const fs::path& path, const std::string& objectsPath,
 {
     for (const auto& entry : fs::directory_iterator(path))
     {
+        // Skip the .vault directory
+        if (entry.path().filename().string() == ".vault") {
+            continue;
+        }
+
         std::string canonicalPath = fs::canonical(entry.path()).string();
         if (fs::is_directory(entry.path()))
         {
@@ -92,16 +97,73 @@ void addToTree(Tree& tree, const fs::path& path, const std::string& objectsPath,
 
 void Vault::add(const std::string& path) {
     if (!fs::exists(path)) {
+        std::cerr << "Error: Path does not exist: " << path << "\n";
         return;
     }
 
     std::unordered_map<std::string, std::string> currentIndex;
     readIndex(this->indexPath, currentIndex);
 
+    std::unordered_map<std::string, std::string> newFiles;
     std::unordered_set<std::string> stagedFiles;
     Tree rootTree;
-    addToTree(rootTree, path, this->objectsPath, currentIndex, stagedFiles, *this);
+    for (const auto& entry : fs::directory_iterator(path)) {
+        if (entry.path().filename().string() == ".vault") {
+            continue;
+        }
 
+        std::string canonicalPath = fs::canonical(entry.path()).string();
+        if (fs::is_directory(entry.path())) {
+            Tree* subtree = new Tree();
+            addToTree(*subtree, entry.path(), this->objectsPath, currentIndex, stagedFiles, *this);
+            rootTree.subtrees[entry.path().filename().string()] = subtree;
+        } else if (fs::is_regular_file(entry.path())) {
+            std::ifstream file(entry.path(), std::ios::binary);
+            if (!file) {
+                continue;
+            }
+            std::string content((std::istreambuf_iterator<char>(file)),
+                                std::istreambuf_iterator<char>());
+            file.close();
+            std::string fileHash = this->sha1Hash(content);
+            newFiles[canonicalPath] = fileHash;
+
+            // Check if file needs to be staged
+            auto it = currentIndex.find(canonicalPath);
+            if (it == currentIndex.end() || it->second != fileHash) {
+                stagedFiles.insert(canonicalPath);
+                rootTree.files[canonicalPath] = fileHash;
+
+                std::string objectFilePath = this->objectsPath + "/" + fileHash;
+                if (!fs::exists(objectFilePath)) {
+                    std::ofstream objectFile(objectFilePath, std::ios::binary);
+                    if (objectFile) {
+                        objectFile << content;
+                        objectFile.close();
+                    }
+                }
+            } else {
+                rootTree.files[canonicalPath] = fileHash;
+            }
+        }
+    }
+
+    // Check if all files are already staged
+    bool allFilesAlreadyStaged = true;
+    for (const auto& [filePath, fileHash] : newFiles) {
+        auto it = currentIndex.find(filePath);
+        if (it == currentIndex.end() || it->second != fileHash) {
+            allFilesAlreadyStaged = false;
+            break;
+        }
+    }
+
+    if (allFilesAlreadyStaged && !currentIndex.empty() && !newFiles.empty()) {
+        std::cout << "already added for commit\n";
+        return;
+    }
+
+    // Check if files are already committed (only if index is empty)
     std::unordered_map<std::string, std::string> committedFiles;
     std::ifstream headFile(this->headPath);
     if (headFile) {
@@ -129,13 +191,39 @@ void Vault::add(const std::string& path) {
         }
     }
 
-    for (const auto& [filePath, fileHash] : currentIndex) {
-        if (rootTree.files.find(filePath) == rootTree.files.end()) {
-            rootTree.files[filePath] = fileHash;
+    bool allFilesCommitted = true;
+    for (const auto& [filePath, fileHash] : newFiles) {
+        auto it = committedFiles.find(filePath);
+        if (it == committedFiles.end() || it->second != fileHash) {
+            allFilesCommitted = false;
+            break;
         }
     }
 
-    // Fully recursive tree persistence
+    if (allFilesCommitted && currentIndex.empty() && !newFiles.empty()) {
+        std::cout << "already committed\n";
+        std::ofstream clearIndexFile(this->indexPath, std::ios::trunc);
+        if (!clearIndexFile) {
+            std::cerr << "Error: Unable to clear index file.\n";
+            return;
+        }
+        clearIndexFile.close();
+
+        std::ofstream clearStagedTreeFile(this->stagedTreePath, std::ios::trunc);
+        if (!clearStagedTreeFile) {
+            std::cerr << "Error: Unable to clear staged tree file.\n";
+            return;
+        }
+        clearStagedTreeFile.close();
+        return;
+    }
+
+    // Update index with new or modified files
+    for (const auto& [filePath, fileHash] : newFiles) {
+        currentIndex[filePath] = fileHash;
+    }
+
+    // Build tree content
     std::function<void(Tree&, std::stringstream&)> buildTreeContent = [&](Tree& tree, std::stringstream& content) {
         for (const auto& [filePath, fileHash] : tree.files) {
             content << "file " << filePath << " " << fileHash << "\n";
@@ -170,6 +258,7 @@ void Vault::add(const std::string& path) {
 
     std::ofstream stagedTreeFile(this->stagedTreePath);
     if (!stagedTreeFile) {
+        std::cerr << "Error: Unable to write staged tree file.\n";
         return;
     }
     stagedTreeFile << treeHash;
@@ -177,6 +266,7 @@ void Vault::add(const std::string& path) {
 
     std::ofstream indexFile(this->indexPath, std::ios::trunc);
     if (!indexFile) {
+        std::cerr << "Error: Unable to write index file.\n";
         return;
     }
     for (const auto& [filePath, fileHash] : currentIndex) {
@@ -184,12 +274,8 @@ void Vault::add(const std::string& path) {
     }
     indexFile.close();
 
-    if (stagedFiles.empty()) {
-        if (committedFiles.empty() || currentIndex == committedFiles) {
-            std::cout << "already committed\n";
-        } else {
-            std::cout << "already added for commit\n";
-        }
+    if (stagedFiles.empty() && !newFiles.empty()) {
+        std::cout << "already added for commit\n";
     } else {
         std::cout << "added for commit\n";
         for (const auto& file : stagedFiles) {

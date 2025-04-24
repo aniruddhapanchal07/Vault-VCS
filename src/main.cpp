@@ -4,7 +4,7 @@
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cerr << "Usage: vault <command> [args]\n";
-        std::cerr << "Available commands: init, add, commit, log\n";
+        std::cerr << "Available commands: init, add, commit, log, status, checkout\n";
         return 1;
     }
 
@@ -27,9 +27,21 @@ int main(int argc, char* argv[]) {
         vault.commit(argv[2]);
     } else if (command == "log") {
         vault.log();
+    } else if (command == "status") {
+        if (argc < 3) {
+            vault.status();
+        } else {
+            vault.status(argv[2]);
+        }
+    } else if (command == "checkout") {
+        if (argc < 3) {
+            std::cerr << "Usage: vault checkout <commit-hash>\n";
+            return 1;
+        }
+        vault.checkout(argv[2]);
     } else {
         std::cerr << "Unknown command: " << command << "\n";
-        std::cerr << "Available commands: init, add, commit, log\n";
+        std::cerr << "Available commands: init, add, commit, log, status, checkout\n";
         return 1;
     }
 
