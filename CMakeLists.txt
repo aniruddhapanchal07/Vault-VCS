@@ -23,6 +23,7 @@ set(SOURCES
     src/log.cpp
     src/CommitNode.cpp
     src/main.cpp
+    src/status.cpp
 )
 
 # Add the executable
