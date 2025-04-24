@@ -17,6 +17,7 @@ This project is an implementation of a local version control system "Vault" writ
 - **vault init**: Initialize a new Vault repository
 - **vault add <path>**: Add files or directories to the staging area
 - **vault commit <message>**: Commit staged changes with a message
+- **vault status <path>**: Check the state of a project directory
 - **vault log**: Display commit history with timestamps and messages
 
 ## Project Structure
