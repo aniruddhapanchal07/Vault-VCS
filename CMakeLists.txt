@@ -24,6 +24,7 @@ set(SOURCES
     src/CommitNode.cpp
     src/main.cpp
     src/status.cpp
+    src/checkout.cpp
 )
 
 # Add the executable
